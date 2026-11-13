@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import AddMemberForm from '../components/AddMemberForm';
 import TeamCard from '../components/TeamCard';
-export default function TeamPage({ members, onAddMember, onToggle, onGiveStar }) {
+export default function TeamPage({
+ members,
+ onAddMember,
+ onToggle,
+ onGiveStar,
+ loading,
+ error,
+}) {
  const [searchTerm, setSearchTerm] = useState('');
  const [filterOnline, setFilterOnline] = useState(false);
  // Kalkulasi metrik statistik
@@ -25,6 +32,7 @@ export default function TeamPage({ members, onAddMember, onToggle, onGiveStar })
  </div>
  {/* 2. Form Registrasi Anggota Baru (Validasi Zod) */}
  <AddMemberForm onAddMember={onAddMember} />
+ {error && <p className="empty-state" role="alert">{error}</p>}
  {/* 3. Toolbar Pencarian & Toggle Filter Online */}
  <div className="search-bar">
  <input type="text" placeholder="🔍 Cari nama anggota tim..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
@@ -34,7 +42,13 @@ export default function TeamPage({ members, onAddMember, onToggle, onGiveStar })
  </div>
  {/* 4. Grid Kartu Anggota Tim */}
  <div className="team-grid">
- {filteredMembers.map((member) => (
+ {loading ? (
+ <div className="empty-state">Memuat data anggota dari database...</div>
+ ) : filteredMembers.length === 0 ? (
+ <div className="empty-state">
+ {members.length === 0 ? 'Belum ada anggota tim.' : 'Tidak ada anggota yang cocok dengan pencarian.'}
+ </div>
+ ) : filteredMembers.map((member) => (
  <TeamCard key={member.id} member={member} onToggle={onToggle} onGiveStar={onGiveStar} />
  ))}
  </div>

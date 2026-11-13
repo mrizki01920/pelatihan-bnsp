@@ -6,7 +6,7 @@ export default function MemberDetailPage({ members }) {
 
     // Cari anggota berdasarkan ID dari URL
     const member = members.find(
-        (item) => item.id === Number(id)
+        (item) => String(item.id) === id
     );
 
     // Jika anggota tidak ditemukan

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { z } from 'zod';
 
 const memberSchema = z.object({
@@ -17,29 +17,41 @@ export default function AddMemberForm({ onAddMember }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setSubmitError('');
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const result = memberSchema.safeParse(formData);
 
-    if (result.success) {
-      onAddMember(result.data);
-      setFormData({ name: '', email: '', role: '', bio: '' });
-      setErrors({});
-    } else {
+    if (!result.success) {
       const fieldErrors = {};
       result.error.issues.forEach((issue) => {
         fieldErrors[issue.path[0]] = issue.message;
       });
       setErrors(fieldErrors);
+      return;
+    }
+
+    setSubmitting(true);
+    setErrors({});
+    setSubmitError('');
+    try {
+      await onAddMember(result.data);
+      setFormData({ name: '', email: '', role: '', bio: '' });
+    } catch (err) {
+      setSubmitError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -104,10 +116,11 @@ export default function AddMemberForm({ onAddMember }) {
           {errors.bio && <span className="error-text">{errors.bio}</span>}
         </div>
 
-        <button type="submit" className="btn-submit">
-          + Tambah
+        <button type="submit" className="btn-submit" disabled={submitting}>
+          {submitting ? 'Menyimpan...' : '+ Tambah'}
         </button>
       </div>
+      {submitError && <p className="error-text" role="alert">{submitError}</p>}
     </form>
   );
 }
