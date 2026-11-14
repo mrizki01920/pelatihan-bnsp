@@ -2,7 +2,6 @@ import { useState } from 'react';
 import TeamDirectory from './component/TeamDirectory';
 import BarangDirectory from './component/BarangDirectory';
 import NewsFeed from './component/NewsFeed';
-import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('team');

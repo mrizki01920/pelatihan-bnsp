@@ -32,7 +32,7 @@ Aplikasi pelatihan fullstack BNSP dengan tiga tab utama:
 | --- | --- |
 | 👥 Anggota Tim | CRUD anggota tim (tambah, cari, edit, hapus, ubah status, beri bintang) |
 | 📦 Data Barang | CRUD barang + kategori (relasi satu kategori ke banyak barang) |
-| 📰 Berita Terkini | Menampilkan berita dari Berita Indo API (CNN Indonesia) |
+| 📰 Berita Terkini | Menampilkan berita dari RSS resmi CNN Indonesia |
 
 | Lapisan | Teknologi | Lokasi |
 | --- | --- | --- |
@@ -89,7 +89,7 @@ pelatihan-bnsp/
 ├── src/                        # FRONTEND
 │   ├── main.jsx                # Bootstrap React
 │   ├── App.jsx                 # Shell aplikasi + tab navigation
-│   ├── App.css                 # Styling lama (header, tab berita) — tidak dilampirkan
+│   ├── App.css                 # Styling legacy, dimuat pada layer components
 │   ├── index.css               # Entry Tailwind v4 tanpa preflight
 │   ├── api/
 │   │   ├── members.js          # Client REST anggota tim
@@ -1929,7 +1929,6 @@ test('CORS menjawab preflight OPTIONS untuk POST', async () => {
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import './App.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -1946,7 +1945,6 @@ import { useState } from 'react';
 import TeamDirectory from './component/TeamDirectory';
 import BarangDirectory from './component/BarangDirectory';
 import NewsFeed from './component/NewsFeed';
-import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('team');
@@ -1994,12 +1992,11 @@ export default App;
 ### `src/index.css`
 
 ```css
-/* Entry Tailwind CSS v4 — tanpa preflight.
-   Preflight (reset CSS global) sengaja tidak diimpor supaya styling lama
-   di App.css (header aplikasi & tab Berita Terkini) tetap tampil sama. */
+/* Tailwind CSS v4 tanpa preflight; utilities diletakkan di atas layer components. */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+@import "./App.css" layer(components);
 ```
 
 ### `src/api/members.js`
@@ -3004,13 +3001,27 @@ import { useState, useEffect } from 'react';
 import NewsCard from './NewsCard';
 import { mapNewsItems } from './newsMapper';
 
-const NEWS_URL = 'https://berita-indo-api.vercel.app/v1/cnn-news';
+const NEWS_URL = 'https://www.cnnindonesia.com/rss';
+
+function parseFeedItems(xml) {
+    const document = new DOMParser().parseFromString(xml, 'application/xml');
+    if (document.querySelector('parsererror')) {
+        throw new Error('Format RSS CNN Indonesia tidak valid.');
+    }
+
+    return Array.from(document.querySelectorAll('channel > item'), (item) => ({
+        title: item.querySelector('title')?.textContent?.trim() || 'Judul berita tidak tersedia',
+        link: item.querySelector('link')?.textContent?.trim() || '#',
+        image: item.querySelector('enclosure')?.getAttribute('url') || '',
+        pubDate: item.querySelector('pubDate')?.textContent?.trim() || '',
+    }));
+}
 
 async function fetchNewsItems(signal) {
     const res = await fetch(NEWS_URL, { signal });
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-    const json = await res.json();
-    return mapNewsItems(json.data);
+    const xml = await res.text();
+    return mapNewsItems(parseFeedItems(xml));
 }
 
 function NewsFeed() {
@@ -3056,7 +3067,7 @@ function NewsFeed() {
             <div className="news-toolbar">
                 <div>
                     <h2>Berita Terkini CNN Indonesia</h2>
-                    <p>Menampilkan {news.length} artikel dari Berita Indo API</p>
+                    <p>Menampilkan {news.length} artikel dari RSS CNN Indonesia</p>
                 </div>
                 <button className="btn-refresh" onClick={handleRefresh} disabled={isLoading}>
                     {isLoading ? '⌛ Memuat...' : '🔄 Segarkan Berita'}
@@ -3149,17 +3160,23 @@ function formatDate(isoDate) {
     return dateFormatter.format(date);
 }
 
-// Menyeragamkan item dari Berita Indo API ke bentuk yang dipakai NewsCard.
+// Menyeragamkan item RSS CNN Indonesia ke bentuk yang dipakai NewsCard.
 export function mapNewsItems(items) {
     if (!Array.isArray(items)) return [];
 
-    return items.map((item) => ({
-        title: item.title,
-        link: item.link,
-        image: item.image?.large || item.image?.small || '',
-        category: CATEGORY,
-        date: formatDate(item.isoDate),
-    }));
+    return items.map((item) => {
+        const image = typeof item.image === 'string'
+            ? item.image
+            : item.image?.large || item.image?.small || '';
+
+        return {
+            title: item.title,
+            link: item.link,
+            image,
+            category: CATEGORY,
+            date: formatDate(item.isoDate || item.pubDate),
+        };
+    });
 }
 ```
 
@@ -3261,6 +3278,23 @@ test('memetakan item CNN ke bentuk yang dipakai NewsCard', () => {
         image: 'https://img.example.com/large.jpg',
         category: 'CNN Indonesia',
         date: '12 November 2026',
+    });
+});
+
+test('memetakan item RSS CNN Indonesia', () => {
+    const [item] = mapNewsItems([{
+        title: 'Berita dari RSS',
+        link: 'https://www.cnnindonesia.com/contoh-rss',
+        image: 'https://img.example.com/rss.jpg',
+        pubDate: 'Sat, 14 Nov 2026 14:30:00 +0700',
+    }]);
+
+    assert.deepEqual(item, {
+        title: 'Berita dari RSS',
+        link: 'https://www.cnnindonesia.com/contoh-rss',
+        image: 'https://img.example.com/rss.jpg',
+        category: 'CNN Indonesia',
+        date: '14 November 2026',
     });
 });
 

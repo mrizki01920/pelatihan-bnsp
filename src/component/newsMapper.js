@@ -15,15 +15,21 @@ function formatDate(isoDate) {
     return dateFormatter.format(date);
 }
 
-// Menyeragamkan item dari Berita Indo API ke bentuk yang dipakai NewsCard.
+// Menyeragamkan item RSS CNN Indonesia ke bentuk yang dipakai NewsCard.
 export function mapNewsItems(items) {
     if (!Array.isArray(items)) return [];
 
-    return items.map((item) => ({
-        title: item.title,
-        link: item.link,
-        image: item.image?.large || item.image?.small || '',
-        category: CATEGORY,
-        date: formatDate(item.isoDate),
-    }));
+    return items.map((item) => {
+        const image = typeof item.image === 'string'
+            ? item.image
+            : item.image?.large || item.image?.small || '';
+
+        return {
+            title: item.title,
+            link: item.link,
+            image,
+            category: CATEGORY,
+            date: formatDate(item.isoDate || item.pubDate),
+        };
+    });
 }

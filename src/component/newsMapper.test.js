@@ -24,6 +24,23 @@ test('memetakan item CNN ke bentuk yang dipakai NewsCard', () => {
     });
 });
 
+test('memetakan item RSS CNN Indonesia', () => {
+    const [item] = mapNewsItems([{
+        title: 'Berita dari RSS',
+        link: 'https://www.cnnindonesia.com/contoh-rss',
+        image: 'https://img.example.com/rss.jpg',
+        pubDate: 'Sat, 14 Nov 2026 14:30:00 +0700',
+    }]);
+
+    assert.deepEqual(item, {
+        title: 'Berita dari RSS',
+        link: 'https://www.cnnindonesia.com/contoh-rss',
+        image: 'https://img.example.com/rss.jpg',
+        category: 'CNN Indonesia',
+        date: '14 November 2026',
+    });
+});
+
 test('memakai gambar small jika gambar large tidak tersedia', () => {
     const [item] = mapNewsItems([
         { ...cnnItem, image: { small: 'https://img.example.com/small.jpg' } },

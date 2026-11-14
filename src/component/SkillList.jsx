@@ -1,5 +1,3 @@
-import { useState  } from 'react';
-
 function SkillList() {
     const skills = ['HTML', 'CSS', 'JavaScript Modern', 'React', 'Node.js'];
 

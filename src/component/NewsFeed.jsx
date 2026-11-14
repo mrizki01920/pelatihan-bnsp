@@ -2,13 +2,27 @@ import { useState, useEffect } from 'react';
 import NewsCard from './NewsCard';
 import { mapNewsItems } from './newsMapper';
 
-const NEWS_URL = 'https://berita-indo-api.vercel.app/v1/cnn-news';
+const NEWS_URL = 'https://www.cnnindonesia.com/internasional/rss';
+
+function parseFeedItems(xml) {
+    const document = new DOMParser().parseFromString(xml, 'application/xml');
+    if (document.querySelector('parsererror')) {
+        throw new Error('Format RSS CNN Indonesia tidak valid.');
+    }
+
+    return Array.from(document.querySelectorAll('channel > item'), (item) => ({
+        title: item.querySelector('title')?.textContent?.trim() || 'Judul berita tidak tersedia',
+        link: item.querySelector('link')?.textContent?.trim() || '#',
+        image: item.querySelector('enclosure')?.getAttribute('url') || '',
+        pubDate: item.querySelector('pubDate')?.textContent?.trim() || '',
+    }));
+}
 
 async function fetchNewsItems(signal) {
     const res = await fetch(NEWS_URL, { signal });
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-    const json = await res.json();
-    return mapNewsItems(json.data);
+    const xml = await res.text();
+    return mapNewsItems(parseFeedItems(xml));
 }
 
 function NewsFeed() {
@@ -24,12 +38,16 @@ function NewsFeed() {
         (async () => {
             try {
                 const items = await fetchNewsItems(controller.signal);
+                if (controller.signal.aborted) return;
                 setNews(items);
+                setError(null);
             } catch (err) {
                 if (err.name === 'AbortError') return;
                 setError(err.message || 'Gagal mengambil berita terkini.');
             } finally {
-                setIsLoading(false);
+                if (!controller.signal.aborted) {
+                    setIsLoading(false);
+                }
             }
         })();
 
@@ -54,7 +72,7 @@ function NewsFeed() {
             <div className="news-toolbar">
                 <div>
                     <h2>Berita Terkini CNN Indonesia</h2>
-                    <p>Menampilkan {news.length} artikel dari Berita Indo API</p>
+                    <p>Menampilkan {news.length} artikel dari RSS CNN Indonesia</p>
                 </div>
                 <button className="btn-refresh" onClick={handleRefresh} disabled={isLoading}>
                     {isLoading ? '⌛ Memuat...' : '🔄 Segarkan Berita'}
@@ -79,7 +97,7 @@ function NewsFeed() {
             {!isLoading && !error && (
                 <div className="news-grid">
                     {news.map((item, i) => (
-                        <NewsCard key={i} {...item} />
+                        <NewsCard key={item.link || i} {...item} />
                     ))}
                 </div>
             )}

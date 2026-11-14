@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import TeamCard from './TeamCard';
 import AddMemberForm from './AddMemberForm';
 

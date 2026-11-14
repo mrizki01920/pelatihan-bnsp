@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import AddMemberForm from '../components/AddMemberForm';
-import TeamCard from '../components/TeamCard';
+import AddMemberForm from '../component/legacy/AddMemberForm';
+import TeamCard from '../component/legacy/TeamCard';
 export default function TeamPage({
  members,
  onAddMember,
